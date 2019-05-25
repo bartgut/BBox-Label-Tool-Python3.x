@@ -171,6 +171,37 @@ class LabelTool():
 
         self.loadImage()
         print('%d images loaded from %s' %(self.total, s))  # By Tomonori12
+                
+    def labels_yolo2bbox(self, box_label):
+        img_size = self.img.size
+        
+        x_center = int(box_label[0]*img_size[0])
+        y_center = int(box_label[1]*img_size[1])
+        x_width = int(box_label[2]*img_size[0])
+        y_height = int(box_label[3]*img_size[1])
+
+        bounding_box_left_x = x_center - x_width
+        bounding_box_left_y = y_center - y_height
+        bounding_box_right_x = x_center + x_width
+        bounding_box_right_y = y_center + y_height
+        
+        return (bounding_box_left_x,
+            bounding_box_left_y,
+            bounding_box_right_x,
+            bounding_box_right_y)
+
+    def labels_bbox2yolo(self, box_label):
+        img_size = self.img.size
+        
+        x_center = (box_label[0] + box_label[2])/2.0
+        y_center = (box_label[1] + box_label[3])/2.0
+        x_width = abs(box_label[2]-x_center)
+        y_height = abs(box_label[3]-y_center)
+            
+        return (x_center/img_size[0],
+            y_center/img_size[1],
+            x_width/img_size[0],
+            y_height/img_size[1])
 
     def loadImage(self):
         # load image
@@ -190,10 +221,8 @@ class LabelTool():
         if os.path.exists(self.labelfilename):
             with open(self.labelfilename) as f:
                 for (i, line) in enumerate(f):
-                    if i == 0:
-                        bbox_cnt = int(line.strip())
-                        continue
-                    tmp = [int(t.strip()) for t in line.split()]
+                    values = list(map(lambda x: float(x), line.split(" ", 1)[1].split(" ")))
+                    tmp = self.labels_yolo2bbox(values)
 ##                    print(tmp)  # By Tomonori12
                     self.bboxList.append(tuple(tmp))
                     tmpId = self.mainPanel.create_rectangle(tmp[0], tmp[1], \
@@ -206,9 +235,9 @@ class LabelTool():
 
     def saveImage(self):
         with open(self.labelfilename, 'w') as f:
-            f.write('%d\n' %len(self.bboxList))
             for bbox in self.bboxList:
-                f.write(' '.join(map(str, bbox)) + '\n')
+                bbox_yolo = self.labels_bbox2yolo(bbox)
+                f.write('0 ' + ' '.join(map(str, bbox_yolo)) + '\n')
         print('Image No. %d saved' %(self.cur))  # By Tomonori12
 
 
@@ -297,3 +326,5 @@ if __name__ == '__main__':
     tool = LabelTool(root)
     root.resizable(width =  True, height = True)
     root.mainloop()
+
+
